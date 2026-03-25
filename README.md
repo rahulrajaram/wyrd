@@ -1,6 +1,6 @@
 # wyrd
 
-`wyrd` is optional semantic tooling that pairs well with [`yore`](../yore) when
+`wyrd` is optional semantic tooling that pairs well with `yore` when
 embedding-driven workflows are useful. `yore` stands on its own for
 deterministic, lexical search, and `wyrd` is available when you want semantic
 reranking, clustering, refinement, or raw embeddings on top of `yore` output or
@@ -22,26 +22,63 @@ cargo install --path .
 
 ## Model setup
 
-`wyrd` expects a local ONNX export of `all-MiniLM-L6-v2` plus a matching `tokenizer.json`.
+`wyrd` expects a local ONNX export of `all-MiniLM-L6-v2`.
 
-Set:
+Required:
 
 ```bash
 export WYRD_EMBEDDING_MODEL=/path/to/all-MiniLM-L6-v2.onnx
-export WYRD_EMBEDDING_TOKENIZER=/path/to/tokenizer.json
 ```
 
 Optional:
 
 ```bash
+export WYRD_EMBEDDING_TOKENIZER=/path/to/tokenizer.json
 export WYRD_EMBEDDING_THRESHOLD=0.8
 ```
 
 Notes:
 
 - The ONNX model is not vendored in this repo.
+- If `WYRD_EMBEDDING_TOKENIZER` is unset, `wyrd` looks for `tokenizer.json`
+  next to `WYRD_EMBEDDING_MODEL`.
 - `ort` and `ort-sys` are pinned to `2.0.0-rc.6`.
 - This repo currently targets `rustc 1.86.x`; newer `ort` release candidates may require `rustc 1.88+`.
+
+## CLI reference
+
+Top-level usage:
+
+```text
+wyrd <COMMAND>
+```
+
+Commands:
+
+- `wyrd rerank`: semantic reranking for `yore query --json` output
+  - `--query <QUERY>`: override or provide the original query text
+  - `--root <ROOT>`: resolve relative result paths from this directory
+    Default: `.`
+  - `--semantic-weight <FLOAT>`: semantic-vs-lexical blend
+    Default: `0.65`
+  - `--limit <N>`: trim output to the top N reranked results
+  - `--max-chars <N>`: max normalized characters embedded per file
+    Default: `4000`
+- `wyrd cluster`: semantic clustering for `yore vocabulary --format json`
+  - `--threshold <FLOAT>`: clustering threshold
+    Default: `WYRD_EMBEDDING_THRESHOLD` or `0.8`
+  - `--limit <N>`: only cluster the top N vocabulary terms
+- `wyrd refine`: semantic refinement for `yore dupes --json`
+  - `--root <ROOT>`: resolve duplicate-pair file paths from this directory
+    Default: `.`
+  - `--threshold <FLOAT>`: minimum refined score to retain a pair
+    Default: `WYRD_EMBEDDING_THRESHOLD` or `0.8`
+  - `--semantic-weight <FLOAT>`: semantic-vs-lexical blend
+    Default: `0.55`
+  - `--max-chars <N>`: max normalized characters embedded per file
+    Default: `4000`
+- `wyrd embed [TEXTS]...`: emit raw embeddings for text args or piped stdin
+  - `--lines`: embed each non-empty stdin line separately
 
 ## Copy-paste pipelines
 
@@ -75,6 +112,9 @@ Why `--query` is still supported:
 
 Semantic grouping for `yore vocabulary --format json`.
 
+If `--threshold` is omitted, `wyrd` uses `WYRD_EMBEDDING_THRESHOLD` and falls
+back to `0.8`.
+
 ```bash
 yore vocabulary --index .yore --format json --limit 200 | wyrd cluster
 yore vocabulary --index .yore --format json --limit 100 | wyrd cluster --threshold 0.82
@@ -84,6 +124,9 @@ yore vocabulary --index .yore --format json | wyrd cluster --limit 50
 ### `refine`
 
 Semantic refinement for `yore dupes --json`.
+
+If `--threshold` is omitted, `wyrd` uses `WYRD_EMBEDDING_THRESHOLD` and falls
+back to `0.8`.
 
 ```bash
 yore dupes --index .yore --json | wyrd refine
@@ -105,7 +148,8 @@ printf 'authentication flow\nbilling webhook\npassword reset\n' | wyrd embed --l
 
 - `yore` JSON often contains relative paths.
 - `wyrd` resolves them relative to the current working directory by default.
-- If `yore` emits rootless absolute-style paths like `home/rahul/...`, `wyrd` also tries resolving them under `/`.
+- If `yore` emits rootless absolute-style paths like `home/user/...`, `wyrd`
+  also tries resolving them under `/`.
 - Use `--root` if you want to point resolution somewhere else.
 
 ## Development
