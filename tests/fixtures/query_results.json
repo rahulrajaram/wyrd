@@ -1,0 +1,11 @@
+[
+  {
+    "path": "docs/billing.md",
+    "score": 10.0
+  },
+  {
+    "path": "docs/auth.md",
+    "score": 5.0,
+    "doc_terms": ["auth", "token"]
+  }
+]

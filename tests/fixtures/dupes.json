@@ -1,0 +1,18 @@
+[
+  {
+    "file1": "docs/auth.md",
+    "file2": "docs/login.md",
+    "jaccard": 0.8,
+    "simhash": 0.8,
+    "minhash": 0.8,
+    "combined": 0.8
+  },
+  {
+    "file1": "docs/auth.md",
+    "file2": "docs/billing.md",
+    "jaccard": 0.8,
+    "simhash": 0.8,
+    "minhash": 0.8,
+    "combined": 0.8
+  }
+]

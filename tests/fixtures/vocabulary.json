@@ -1,0 +1,24 @@
+{
+  "format": "json",
+  "limit": 3,
+  "total": 3,
+  "terms": [
+    {
+      "term": "login",
+      "score": 5.0,
+      "count": 10
+    },
+    {
+      "term": "signin",
+      "score": 4.0,
+      "count": 8
+    },
+    {
+      "term": "invoice",
+      "score": 3.0,
+      "count": 6
+    }
+  ],
+  "used_default_stopwords": true,
+  "include_stemming": false
+}
