@@ -21,6 +21,16 @@ pub struct QueryEnvelope {
     pub extra: Map<String, Value>,
 }
 
+impl QueryEnvelope {
+    pub fn original_query(&self) -> Option<&str> {
+        self.extra.get("query").and_then(Value::as_str).or_else(|| {
+            self.results
+                .iter()
+                .find_map(|result| result.extra.get("query").and_then(Value::as_str))
+        })
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 struct QueryError {
     #[allow(dead_code)]
@@ -108,19 +118,21 @@ mod tests {
 
     #[test]
     fn parses_query_array_payload() {
-        let payload = r#"[{"path":"docs/auth.md","score":1.2}]"#;
+        let payload = r#"[{"path":"docs/auth.md","score":1.2,"query":"auth"}]"#;
         let parsed = parse_query_payload(payload).expect("should parse");
         assert_eq!(parsed.results.len(), 1);
         assert_eq!(parsed.results[0].path, "docs/auth.md");
         assert!(parsed.diagnostics.is_none());
+        assert_eq!(parsed.original_query(), Some("auth"));
     }
 
     #[test]
     fn parses_query_wrapper_payload() {
-        let payload = r#"{"results":[{"path":"docs/auth.md","score":1.2}],"diagnostics":{"tokens":["auth"]}}"#;
+        let payload = r#"{"query":"auth","results":[{"path":"docs/auth.md","score":1.2}],"diagnostics":{"tokens":["auth"]}}"#;
         let parsed = parse_query_payload(payload).expect("should parse");
         assert_eq!(parsed.results.len(), 1);
         assert!(parsed.diagnostics.is_some());
+        assert_eq!(parsed.original_query(), Some("auth"));
     }
 
     #[test]

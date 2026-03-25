@@ -20,5 +20,28 @@ Result:
 
 Quirks:
 
-- `yore query --json` still omits the original query text at the top level, so `wyrd rerank --query` had to repeat `"index path"`.
-- Building the `yore` index from an absolute source path produced absolute `path` values in the JSON response; `wyrd` handled them without extra flags.
+- This historical smoke predates the embedded-query handoff, so `wyrd rerank --query` had to repeat `"index path"`.
+- Current `wyrd` also tolerates rootless absolute-style paths from `yore` JSON when the indexed source path was absolute.
+
+## 2026-03-25: `yore query --json | wyrd rerank` without `--query`
+
+Smoke command:
+
+```bash
+tmpdir=$(mktemp -d /tmp/wyrd-smoke-XXXXXX)
+yore build /home/rahul/Documents/yore --output "$tmpdir"/index --types md,txt,rst
+export WYRD_EMBEDDING_MODEL=/home/rahul/Documents/haake/models/all-MiniLM-L6-v2/model.onnx
+export WYRD_EMBEDDING_TOKENIZER=/home/rahul/Documents/haake/models/all-MiniLM-L6-v2/tokenizer.json
+yore query --query "index path" --json --doc-terms 5 --explain --index "$tmpdir"/index \
+  | cargo run --quiet -- rerank --limit 3
+```
+
+Result:
+
+- PASS. `wyrd rerank` inferred the original query from live `yore query --json` output and returned three reranked results.
+- The same three `yore` documents stayed at the top, so the run validated the cross-repo query handoff more than ranking changes.
+
+Quirks:
+
+- `yore query --json --explain` now carries the original query at the wrapper level and per-result, keeping older result-array consumers usable.
+- Current `yore` builds may emit rootless absolute-style paths like `home/rahul/...`; `wyrd` now resolves those without extra flags.

@@ -528,7 +528,18 @@ fn resolve_path(root: &Path, value: &str) -> PathBuf {
     if path.is_absolute() {
         path.to_path_buf()
     } else {
-        root.join(path)
+        let rooted = root.join(path);
+        if rooted.exists() {
+            return rooted;
+        }
+
+        // Current `yore` JSON can surface absolute-source paths without the leading slash.
+        let absolute_like = Path::new("/").join(path);
+        if absolute_like.exists() {
+            absolute_like
+        } else {
+            rooted
+        }
     }
 }
 
@@ -619,6 +630,22 @@ mod tests {
         .expect("rerank");
 
         assert_eq!(output.results[0].path, "docs/auth.md");
+    }
+
+    #[test]
+    fn resolve_path_recovers_rootless_absolute_like_paths() {
+        let dir = tempdir().expect("tempdir");
+        let absolute = dir.path().join("docs/auth.md");
+        fs::create_dir_all(absolute.parent().expect("parent")).expect("mkdir");
+        fs::write(&absolute, "Authentication and login guide").expect("write");
+
+        let rootless = absolute
+            .strip_prefix(Path::new("/"))
+            .expect("rootless")
+            .to_string_lossy()
+            .to_string();
+
+        assert_eq!(resolve_path(Path::new("."), &rootless), absolute);
     }
 
     #[test]

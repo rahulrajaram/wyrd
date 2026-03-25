@@ -2,7 +2,7 @@ use std::env;
 use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 use clap::{Parser, Subcommand};
 
 use wyrd::embeddings;
@@ -28,10 +28,10 @@ struct Cli {
 enum Commands {
     /// Semantic reranking for `yore query --json` output.
     Rerank {
-        /// Original query text. Pass the same string used with `yore query --query`
-        /// because current yore JSON output omits it.
+        /// Original query text. Overrides any embedded query found in `yore query --json`
+        /// payloads and remains useful for older or hand-crafted JSON.
         #[arg(long)]
-        query: String,
+        query: Option<String>,
 
         /// Root directory used to resolve relative yore result paths.
         #[arg(long, default_value = ".")]
@@ -105,6 +105,13 @@ fn main() -> Result<()> {
         } => {
             let stdin = read_required_stdin()?;
             let payload = parse_query_payload(&stdin)?;
+            let query = query
+                .or_else(|| payload.original_query().map(ToOwned::to_owned))
+                .ok_or_else(|| {
+                    anyhow!(
+                        "rerank requires --query or yore query JSON that embeds the original query text"
+                    )
+                })?;
             let output = rerank_query_results(
                 payload,
                 &query,

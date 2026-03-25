@@ -47,6 +47,13 @@ fn write_doc(path: &Path, body: &str) {
     fs::write(path, body).expect("write fixture document");
 }
 
+fn rootless_absolute_like(path: &Path) -> String {
+    path.strip_prefix(Path::new("/"))
+        .expect("absolute path")
+        .to_string_lossy()
+        .into_owned()
+}
+
 #[test]
 fn rerank_reads_query_results_from_stdin() {
     let dir = tempdir().expect("tempdir");
@@ -72,6 +79,69 @@ fn rerank_reads_query_results_from_stdin() {
 }
 
 #[test]
+fn rerank_uses_embedded_query_from_yore_json() {
+    let dir = tempdir().expect("tempdir");
+    fs::create_dir_all(dir.path().join("docs")).expect("mkdir docs");
+    write_doc(
+        &dir.path().join("docs/auth.md"),
+        "Authentication and login guide",
+    );
+    write_doc(
+        &dir.path().join("docs/billing.md"),
+        "Invoices and billing walkthrough",
+    );
+
+    let root = dir.path().display().to_string();
+    let output = run_wyrd(
+        &["rerank", "--root", &root],
+        r#"[
+  {"path":"docs/billing.md","score":10.0,"query":"auth"},
+  {"path":"docs/auth.md","score":5.0,"doc_terms":["auth","token"],"query":"auth"}
+]"#,
+    );
+
+    assert_eq!(output["command"], "rerank");
+    assert_eq!(output["query"], "auth");
+    assert_eq!(output["results"][0]["path"], "docs/auth.md");
+}
+
+#[test]
+fn rerank_reads_wrapped_yore_json_with_rootless_absolute_like_paths() {
+    let dir = tempdir().expect("tempdir");
+    fs::create_dir_all(dir.path().join("docs")).expect("mkdir docs");
+    write_doc(
+        &dir.path().join("docs/auth.md"),
+        "Authentication and login guide",
+    );
+    write_doc(
+        &dir.path().join("docs/billing.md"),
+        "Invoices and billing walkthrough",
+    );
+
+    let root = dir.path().display().to_string();
+    let auth_path = rootless_absolute_like(&dir.path().join("docs/auth.md"));
+    let output = run_wyrd(
+        &["rerank", "--root", &root],
+        &format!(
+            r#"{{
+  "query":"auth",
+  "results":[
+    {{"path":"docs/billing.md","score":10.0}},
+    {{"path":"{auth_path}","score":5.0,"doc_terms":["auth","token"]}}
+  ],
+  "diagnostics":{{"tokens":["auth"],"missing_terms":[]}}
+}}"#
+        ),
+    );
+
+    assert_eq!(output["command"], "rerank");
+    assert_eq!(output["query"], "auth");
+    assert_eq!(output["results"][0]["path"], auth_path);
+    assert_eq!(output["diagnostics"]["tokens"][0], "auth");
+    assert!(output.get("warnings").is_none());
+}
+
+#[test]
 fn rerank_help_documents_query_contract() {
     let output = run_wyrd_output(&["rerank", "--help"]);
     assert!(
@@ -83,8 +153,8 @@ fn rerank_help_documents_query_contract() {
     );
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("yore query --query"));
-    assert!(stdout.contains("omits it"));
+    assert!(stdout.contains("embedded query"));
+    assert!(stdout.contains("older or hand-crafted JSON"));
 }
 
 #[test]

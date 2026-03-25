@@ -50,24 +50,26 @@ Notes:
 Semantic reranking for `yore query --json` output.
 
 ```bash
-yore query auth --json | wyrd rerank --query auth
-yore query "token refresh" --json | wyrd rerank --query "token refresh" --limit 5
-yore query "password reset" --json | wyrd rerank --query "password reset" --root "$PWD"
+yore query auth --json | wyrd rerank
+yore query "token refresh" --json | wyrd rerank --limit 5
+yore query "password reset" --json | wyrd rerank --root "$PWD"
 ```
 
 Contract:
 
-- Pass the exact same query string to `yore query` and `wyrd rerank --query`.
+- `wyrd rerank` uses embedded query text from current `yore query --json` output when available.
+- `--query` remains the explicit override for older payloads or non-`yore` JSON.
 
 ```bash
 query="token refresh"
+yore query "$query" --json | wyrd rerank --limit 5
 yore query "$query" --json | wyrd rerank --query "$query" --limit 5
 ```
 
-Why `--query` is required:
+Why `--query` is still supported:
 
-- Current `yore query --json` output includes scores and paths, but not the original query text.
-- Until `yore` includes that field, `wyrd rerank --query` is the supported interface.
+- Older `yore` JSON or hand-crafted payloads may omit the original query text.
+- Pass `--query` when you need to override the embedded query or support legacy payloads.
 
 ### `cluster`
 
@@ -103,6 +105,7 @@ printf 'authentication flow\nbilling webhook\npassword reset\n' | wyrd embed --l
 
 - `yore` JSON often contains relative paths.
 - `wyrd` resolves them relative to the current working directory by default.
+- If `yore` emits rootless absolute-style paths like `home/rahul/...`, `wyrd` also tries resolving them under `/`.
 - Use `--root` if you want to point resolution somewhere else.
 
 ## Development
