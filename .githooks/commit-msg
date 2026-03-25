@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMMITHOOKS_DIR="$(git rev-parse --git-dir)"
+source "$COMMITHOOKS_DIR/lib/common.sh"
+source "$COMMITHOOKS_DIR/lib/commit-msg.sh"
+
+msg_file="$1"
+subject="$( { grep -v '^#' "$msg_file" || true; } | sed -n '/./{p;q;}')"
+if printf '%s' "$subject" | grep -qE '^Revert '; then
+  exit 0
+fi
+
+export COMMITHOOKS_CC_TYPES="${COMMITHOOKS_CC_TYPES:-feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert,handoff,yarli}"
+
+commithooks_validate_conventional_commit "$msg_file"
+commithooks_validate_subject_line "$msg_file"

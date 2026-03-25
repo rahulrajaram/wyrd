@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+if [ -z "$repo_root" ]; then
+  echo "Unable to determine repository root." >&2
+  exit 1
+fi
+
+COMMITHOOKS_DIR="$(git rev-parse --git-dir)"
+source "$COMMITHOOKS_DIR/lib/common.sh"
+source "$COMMITHOOKS_DIR/lib/lint-rust.sh"
+source "$COMMITHOOKS_DIR/lib/secrets.sh"
+
+commithooks_skip_during_rebase && exit 0
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR || true)"
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+if printf '%s' "$staged_files" | grep -qE '\.rs$|^Cargo\.(toml|lock)$'; then
+  (cd "$repo_root" && commithooks_rust_fmt)
+  (cd "$repo_root" && commithooks_rust_clippy)
+fi
+
+commithooks_block_sensitive_files
+commithooks_scan_secrets_in_diff
