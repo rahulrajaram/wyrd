@@ -1962,6 +1962,7 @@ dependencies = [
  "tempfile",
  "tokenizers",
  "tracing",
+ "unicode-segmentation",
 ]
 
 [[package]]
