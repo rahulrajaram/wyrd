@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 description = "Semantic companion CLI for yore"
 license = "MIT"
+repository = "https://github.com/rahulrajaram/wyrd"
+homepage = "https://github.com/rahulrajaram/wyrd"
+documentation = "https://github.com/rahulrajaram/wyrd#readme"
 
 [dependencies]
 anyhow = "1.0"
