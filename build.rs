@@ -168,6 +168,7 @@ fn install_commithooks(repo_root: &Path) {
     }
 
     let lib_dst = git_dir.join("lib");
+    #[allow(clippy::collapsible_if)]
     if lib_dst.exists() {
         if let Err(err) = fs::remove_dir_all(&lib_dst) {
             install_warning(format!(
